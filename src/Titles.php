@@ -113,6 +113,7 @@ CREATE VIRTUAL TABLE page_terms USING fts4aux(page);
     $sql = "INSERT INTO data(path, sort, title, name, description) VALUES (?, ?, ?, ?, ?);";
     self::$insert = self::$pdo->prepare($sql);
     self::$pdo->beginTransaction();
+
     self::crawl(Page::getByID(Page::getHomePageID()), true);
     self::$pdo->commit();
     /*
@@ -128,8 +129,12 @@ CREATE VIRTUAL TABLE page_terms USING fts4aux(page);
    */
   private static function crawl($page)
   {
-    if ($root); // do not exclude root from nav
-    else if ($page->getAttribute('exclude_nav')) return;
+    if (Page::getHomePageID() === $page->getCollectionID()) {
+      // do not exclude root from nav
+    }
+    else if ($page->getAttribute('exclude_nav')) {
+      return;
+    }
     self::insertPage($page);
     $path = $page->getCollectionPath();
     $children = $page->getCollectionChildren();
@@ -193,9 +198,15 @@ CREATE VIRTUAL TABLE page_terms USING fts4aux(page);
       while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
         $tsv .= implode("\t", $row)."\n";
       }
-      return Response::create($tsv, 200, array('Content-Type'=>'text/tab-separated-values'))
-        ->setCharset("UTF-8")
-      ;
+      return Response::create(
+        $tsv, 
+        200, 
+        [
+          'Content-Type'=>'text/plain',
+          'Cache-Control' => 'no-cache, must-revalidate',
+          'Expires' => 'Sat, 26 Jul 1997 05:00:00 GMT',
+        ]
+      )->setCharset("UTF-8");
     }
     
     $pdo = self::sqlopen(self::$sqlfile);
